@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinical Inbox Prioritization: prototype</title>
+<style>
+:root{
+  --ink:#16222e; --ink2:#46566a; --mute:#6f7c89; --line:#e3e8ee; --bg:#eef2f6; --card:#fff;
+  --brand:#12507a; --brand-d:#0c3a59; --brand-l:#e6f0f7; --teal:#0f7c8a;
+  --crit:#b3261e; --crit-bg:#fdecea; --amber:#8a5a00; --amber-bg:#fff3d6; --ok:#1d6f42; --ok-bg:#e5f4ec;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit}
+:focus-visible{outline:3px solid #2b8fd6;outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 20px 48px}
+.top{text-align:center;margin-bottom:18px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:0 0 6px}
+h1{font-size:28px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
+.lede{margin:0 auto;color:var(--ink2);font-size:15.5px;max-width:620px}
+.brief{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 20px}
+.brief section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
+.brief h2{margin:0 0 6px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--brand)}
+.brief p{margin:0;font-size:13.5px;color:var(--ink2)}
+.brief section.prob{border-top:3px solid var(--crit)}
+.brief section.sol{border-top:3px solid var(--teal)}
+.brief section.why{border-top:3px solid var(--brand)}
+.brief section.how{border-top:3px solid var(--amber)}
+.tabs{display:flex;justify-content:center;gap:6px;margin-bottom:18px}
+.tabs button{border:0;background:none;padding:10px 18px;font-size:14px;font-weight:700;color:var(--ink2);cursor:pointer;border-bottom:3px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+.stage{display:flex;flex-direction:column;align-items:center}
+.controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;width:100%;max-width:420px}
+.seg{display:flex;background:#fff;border:1px solid var(--line);border-radius:10px;padding:3px;width:100%}
+.seg button{flex:1;border:0;background:transparent;padding:10px 8px;border-radius:8px;font-size:13.5px;font-weight:700;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+.opts{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.ctl{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer}
+.ctl[aria-pressed="true"]{background:var(--amber-bg);border-color:#f0d9a0;color:var(--amber)}
+.ctl:disabled{opacity:.45;cursor:not-allowed}
+.cap{width:100%;max-width:420px;margin:0 0 14px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--ink2)}
+.cap b{color:var(--ink)}
+.foot{margin-top:14px;font-size:12px;color:var(--mute);text-align:center}
+
+.phone{width:400px;max-width:100%;height:812px;background:#0d1117;border-radius:46px;padding:11px;box-shadow:0 24px 60px rgba(16,34,52,.22)}
+.screen{background:#f6f8fa;height:100%;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.screen.hc{--ink:#000;--ink2:#1a1a1a;--mute:#2f3a45;--line:#66727f;--brand:#0a3a5c;--teal:#00535e;--amber:#5b3d00}
+.screen.big .view{zoom:1.14}
+.screen.big .sheet{zoom:1.1}
+.status{height:44px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 26px 6px;font-size:13px;font-weight:700;background:#fff;flex:none}
+.view{flex:1;display:flex;flex-direction:column;min-height:0}
+.appbar{background:#fff;padding:6px 16px 10px;border-bottom:1px solid var(--line)}
+.approw{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.appbar h3{margin:0;font-size:24px;letter-spacing:-.02em}
+.appbar p{margin:0;font-size:12.5px;color:var(--mute)}
+.iconbtn{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 8px;background:#fff;border-bottom:1px solid var(--line)}
+.chip{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.scroll{flex:1;overflow:auto;padding:10px 12px 14px}
+.banner{border-radius:10px;padding:9px 11px;font-size:12.5px;margin-bottom:10px;border:1px solid}
+.banner.info{background:var(--brand-l);border-color:#c7dcec;color:var(--brand-d)}
+.banner.warn{background:var(--amber-bg);border-color:#f0d9a0;color:#5b3d00}
+.banner.off{background:#eceff2;border-color:#cdd5dc;color:#33414f}
+.banner button{background:none;border:0;padding:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;font-size:12.5px}
+.sec{display:flex;align-items:center;gap:8px;margin:6px 2px 8px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--ink2)}
+.sec .pin{width:20px;height:20px;border-radius:50%;background:var(--amber);color:#fff;display:grid;place-items:center;font-size:11px;letter-spacing:0}
+.item{display:flex;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:8px;cursor:pointer}
+.item.sug{border-left:4px solid var(--teal)}
+.av{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.av.Results{background:#6b4fbb}.av.Messages{background:#1479b8}.av.Refills{background:#2e8b57}.av.Admin{background:#6b747d}
+.im{min-width:0;flex:1}
+.r1{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--mute)}
+.r1 b{color:var(--ink);font-size:13px}
+.ttl{font-size:14.5px;font-weight:650;margin:2px 0 1px;display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:#1479b8;flex:none}
+.prev{font-size:13px;color:var(--ink2);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tags{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:#eef1f4;color:#4d5a67}
+.tag.sugt{background:#dff1f3;color:#075863}
+.tag.moved{font-style:italic}
+.tag.rv{background:var(--ok-bg);color:var(--ok)}
+.tag.sz{background:var(--amber-bg);color:var(--amber)}
+.tabbar{height:70px;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 6px 18px;flex:none}
+.tab{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--mute);font-weight:600;cursor:pointer;min-height:44px}
+.tab[aria-current="page"]{color:var(--brand)}
+.tab svg{width:22px;height:22px}
+.home{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:#111;opacity:.8;z-index:12;pointer-events:none}
+
+.back{background:none;border:0;color:var(--brand);font-weight:700;font-size:14px;padding:10px 4px;cursor:pointer;display:inline-flex;gap:4px;align-items:center;min-height:44px}
+.pt{background:#fff;border-bottom:1px solid var(--line);padding:2px 16px 12px}
+.pt h3{margin:0;font-size:19px}
+.pt p{margin:2px 0 0;font-size:12.5px;color:var(--mute)}
+.dbody{flex:1;overflow:auto;padding:12px 14px 16px}
+.msg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.msg h4{margin:0 0 4px;font-size:15px}
+.msg p{margin:0;font-size:14px;color:var(--ink2)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;color:var(--ink2)}
+.lab b{font-size:20px;color:var(--crit)}
+.why{background:#fff;border:1px solid #cfe3e6;border-radius:12px;padding:12px;margin-bottom:12px}
+.why h5{margin:0 0 8px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--teal)}
+.why ul{margin:0 0 10px;padding-left:18px;font-size:13.5px;color:var(--ink2)}
+.why li{margin-bottom:3px}
+.band{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700}
+.segs{display:flex;gap:3px}
+.segs i{display:block;width:26px;height:8px;border-radius:4px;background:#dfe5ea}
+.segs i.on{background:var(--teal)}
+.inputs{margin:8px 0 0;font-size:12px;color:var(--mute)}
+.confnote{margin:6px 0 0;font-size:12.5px;color:var(--amber);background:var(--amber-bg);padding:7px 9px;border-radius:8px}
+.fb{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--ink2)}
+.fb .row2{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.fbb{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;min-height:36px}
+.fbb:disabled{opacity:.45;cursor:not-allowed}
+.snz{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;font-size:13.5px;font-weight:650;color:var(--ink2);cursor:pointer;margin-bottom:6px;min-height:44px}
+.snz:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:11.5px;color:var(--mute);margin:0 0 10px}
+.existing{display:flex;gap:6px;margin:0 0 6px}
+.existing button{flex:1;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer;min-height:40px}
+.actbar{background:#fff;border-top:1px solid var(--line);padding:10px 12px 22px;display:flex;gap:8px;flex:none}
+.btn{flex:1;border-radius:11px;padding:13px 10px;font-size:14.5px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);min-height:46px}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.pri:disabled.done{background:var(--ok);border-color:var(--ok);opacity:1}
+
+.scrim{position:absolute;inset:0;background:rgba(10,20,30,.45);display:flex;align-items:flex-end;z-index:5}
+.sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:16px 16px 28px;max-height:92%;overflow:auto}
+.sheet h4{margin:0 0 4px;font-size:18px}
+.sheet h6{margin:12px 0 6px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+.sheet p{margin:0 0 12px;font-size:13.5px;color:var(--ink2)}
+.opt{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px;margin-bottom:8px;font-size:14px;cursor:pointer;min-height:46px}
+.opt .rd{width:18px;height:18px;border-radius:50%;border:2px solid #a9b4bf;flex:none}
+.opt[aria-checked="true"]{border-color:var(--brand);background:var(--brand-l)}
+.opt[aria-checked="true"] .rd{border-color:var(--brand);background:radial-gradient(circle,var(--brand) 45%,transparent 50%)}
+.opt.sw .rd{border-radius:5px}
+.opt.sw[aria-checked="true"] .rd{background:var(--brand)}
+.sheet .row{display:flex;gap:8px;margin-top:6px}
+.toast{position:absolute;left:14px;right:14px;bottom:92px;background:#16222e;color:#fff;border-radius:11px;padding:11px 13px;font-size:13px;z-index:13;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+
+.lock{position:absolute;inset:0;z-index:10;background:linear-gradient(165deg,#10304a,#0b1b2b 60%,#0a1420);color:#fff;display:flex;flex-direction:column;align-items:center;padding:56px 14px 24px}
+.lock .sb{position:absolute;top:14px;left:26px;right:26px;display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+.ltime{font-size:76px;font-weight:300;letter-spacing:-.03em;line-height:1;margin-top:40px}
+.ldate{font-size:16px;opacity:.85;margin:6px 0 26px}
+.notif{width:100%;text-align:left;border:0;background:rgba(255,255,255,.17);color:#fff;border-radius:18px;padding:12px 14px;cursor:pointer}
+.notif .nh{display:flex;align-items:center;gap:8px;font-size:12px;opacity:.9;margin-bottom:4px}
+.notif .ni{width:20px;height:20px;border-radius:5px;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:800;font-size:11px}
+.notif .nh span:last-child{margin-left:auto}
+.notif .nt{font-weight:700;font-size:15px}
+.notif .nb{font-size:13.5px;opacity:.9;margin-top:2px}
+.notif.crit{background:rgba(255,235,230,.28);box-shadow:inset 4px 0 0 #ff8a7a}
+.lock .grow{flex:1}
+.lock .uk{background:none;border:0;color:#fff;opacity:.8;font-size:13px;padding:12px;cursor:pointer}
+.face{width:74px;height:74px;border:3px solid #fff;border-radius:22px;margin:150px auto 14px;display:grid;place-items:center;animation:pulse 1s infinite alternate}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.face{animation:none}}
+.hidden{display:none!important}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h2{margin:0 0 8px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--brand)}
+.card p{margin:0 0 8px;font-size:14px;color:var(--ink2)}
+.card p:last-child{margin-bottom:0}
+.small{font-size:12.5px!important;color:var(--mute)!important}
+.mon{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mon .full{grid-column:1/-1}
+.pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.bad{background:var(--crit-bg);color:var(--crit)}
+.pill.watch{background:var(--amber-bg);color:var(--amber)}
+.gatebox{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.gatebox .big{font-size:26px;font-weight:800;letter-spacing:-.02em}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th{text-align:left;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);padding:6px 6px;border-bottom:1px solid var(--line)}
+table.t td{padding:8px 6px;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:middle}
+.mb{display:flex;align-items:center;gap:8px}.mb .track{flex:1;min-width:60px}
+.track{background:#edf1f5;height:12px;border-radius:6px;overflow:hidden}
+.fill{height:100%;border-radius:6px;background:#9aa8b5}
+.fill.a{background:var(--teal)}.fill.r{background:var(--crit)}
+.btnm{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 14px;font-size:13.5px;font-weight:700;cursor:pointer}
+.btnm.danger{background:var(--crit);border-color:var(--crit);color:#fff}
+.btnm.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.row-a{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.intro{background:var(--brand-l);border-color:#c7dcec}
+@media (max-width:900px){.brief{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.mon{grid-template-columns:1fr}.brief{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){.toast{animation:up .18s ease-out}@keyframes up{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Product case · Clinical mobile app · US outpatient care</p>
+    <h1>Clinical Inbox Prioritization</h1>
+    <p class="lede">A mobile inbox for doctors that suggests which items to open first, and explains why. The doctor always decides.</p>
+  </header>
+
+  <div class="brief" aria-label="Summary">
+    <section class="prob">
+      <h2>The problem</h2>
+      <p>Doctors check their phone inbox between patients. Lab results, patient messages, refills, and billing notes all arrive in one list, newest first. A critical result can sit under a reschedule request, and nothing says which to open first.</p>
+    </section>
+    <section class="sol">
+      <h2>The solution</h2>
+      <p>The inbox suggests an order. Urgent items move to the top with a plain reason and a confidence level. The doctor can overrule it, give feedback, or go back to newest first. The app never replies, closes, or hides anything.</p>
+    </section>
+    <section class="why">
+      <h2>How we know it works</h2>
+      <p>Urgent items are seen sooner, with no rise in missed ones. The measure is time to first urgent review. Missed urgent items is the release gate. An admin screen shows the team how it is doing and can switch it off.</p>
+    </section>
+    <section class="how">
+      <h2>How to use this demo</h2>
+      <p>Switch between Before and After to compare. Try the scenarios under the toggle: a locked-phone alert, suggestions failing, and no signal. Open the Admin view to see the team's side.</p>
+    </section>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" id="tApp" aria-selected="true">Provider app</button>
+    <button type="button" role="tab" id="tMon" aria-selected="false">Admin</button>
+  </div>
+
+  <main id="appView" class="stage">
+    <div class="controls" role="group" aria-label="Prototype controls">
+      <div class="seg">
+        <button type="button" id="mBefore" aria-pressed="true">Before</button>
+        <button type="button" id="mAfter" aria-pressed="false">After</button>
+      </div>
+      <div class="opts" aria-label="Scenarios">
+        <button type="button" class="ctl" id="cLock" aria-pressed="false">Lock screen alert</button>
+        <button type="button" class="ctl" id="cDown" aria-pressed="false" disabled>Suggestions fail</button>
+        <button type="button" class="ctl" id="cOff" aria-pressed="false">No signal</button>
+        <button type="button" class="ctl" id="cReset">Reset</button>
+      </div>
+    </div>
+    <p class="cap" id="cap" aria-live="polite"></p>
+    <div class="phone">
+      <div class="screen" id="screen">
+        <div class="status"><span>9:41</span><span>5G &nbsp;&#9646;&#9646;&#9646;</span></div>
+        <div class="view" id="view"></div>
+        <div id="overlay"></div>
+        <div id="lock"></div>
+        <div class="home"></div>
+      </div>
+    </div>
+    <p class="foot">Synthetic data. Original design. Full requirements are in the PRD.</p>
+  </main>
+
+  <section id="monView" class="hidden" aria-label="Admin"></section>
+</div>
+
+<script>
+const INIT=[
+ {id:'sched',cat:'Admin',ab:'AD',from:'Front desk',ago:'6 min',m:6,title:'Reschedule request: Ravi Patel',prev:'Asks to move today at 2:40 pm to Thursday.',pt:'Ravi Patel, 44 M',body:'Patient asks to move today\'s 2:40 pm visit to Thursday at 10:20 am. No symptoms mentioned.',sug:false,unread:true},
+ {id:'refill',cat:'Refills',ab:'RX',from:'Pharmacy',ago:'14 min',m:14,title:'Refill request: metformin 500 mg',prev:'90 day supply. Last filled 86 days ago.',pt:'Sunita Rao, 61 F',body:'Metformin 500 mg, 90 day supply. Last fill 86 days ago. No adverse event noted on the request.',sug:false,unread:true},
+ {id:'bill',cat:'Admin',ab:'AD',from:'Billing',ago:'31 min',m:31,title:'Charge needs a diagnosis pointer',prev:'Tuesday visit. Coder is waiting.',pt:'Mohan Das, 52 M',body:'The Tuesday visit has no diagnosis pointer. This does not affect care today.',sug:false,unread:false},
+ {id:'k',cat:'Results',ab:'LAB',from:'Lab',ago:'47 min',m:47,title:'Potassium 6.1 mmol/L, critical',prev:'Lab flagged critical. Last result was 4.4.',pt:'Anita Iyer, 58 F',body:'',sug:true,crit:true,src:'Lab critical flag (fixed rule)',lab:{name:'Potassium',val:'6.1',unit:'mmol/L',prior:'4.4, 5 weeks ago'},conf:3,confWord:'High',confNote:'The critical flag is a fixed lab rule. It still needs your review.',
+  why:['The lab flagged this result as critical.','It rose from 4.4 on the last result, 5 weeks ago.','Lisinopril 10 mg is on the medication list.'],inputs:'Lab flag, previous result, medication list.',unread:true},
+ {id:'cp',cat:'Messages',ab:'MSG',from:'Patient message',ago:'1 hr',m:65,title:'Chest tightness since last night',prev:'Unread. Sent at 11:04 pm.',pt:'Farah Khan, 49 F',body:'"Tightness in my chest since about 11 pm. It gets worse when I climb stairs. No sweating. Should I come in?"',sug:true,src:'Model, reading the message wording',conf:2,confWord:'Medium',confNote:'The wording can be read more than one way. Please read the full message.',
+  why:['The message uses symptom words: chest tightness, worse on stairs.','It is unread. No staff note or reply yet.','It was sent after clinic hours, at 11:04 pm.'],inputs:'Message text, read status, send time.',unread:true},
+ {id:'a1c',cat:'Results',ab:'LAB',from:'Lab',ago:'2 hr',m:120,title:'HbA1c 7.1%',prev:'Previous 7.0% three months ago.',pt:'Rohan Desai, 56 M',body:'',sug:false,lab:{name:'HbA1c',val:'7.1',unit:'%',prior:'7.0, 3 months ago',normal:true},unread:false}
+];
+let items,state,toastT,unlockT,sess;
+function init(){
+  items=JSON.parse(JSON.stringify(INIT));
+  state={mode:'before',down:false,offline:false,killed:false,filter:'All',screen:'list',scene:'app',cur:null,sheet:null,order:'suggested',pick:null,snzPick:null,big:false,hc:false,toast:null,tab:'app',fail:false,confirmKill:false};
+  sess={shown:0,over:0,rev:0,fbY:0,fbN:0,sw:0,push:0,snz:0};
+  clearTimeout(toastT);clearTimeout(unlockT);
+}
+init();
+
+const $=s=>document.querySelector(s);
+const view=$('#view'),overlay=$('#overlay'),lockEl=$('#lock');
+const ICON={
+ inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/></svg>',
+ cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+ pts:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M17 5a3.5 3.5 0 0 1 0 6.5M21.5 20c-.3-2.2-1.4-3.7-3-4.5"/></svg>',
+ set:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#12507a" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>'
+};
+const LABEL={Results:'Result',Messages:'Message',Refills:'Refill',Admin:'Admin'};
+
+function suggestionsOn(){return state.mode==='after'&&!state.down&&!state.offline&&!state.killed&&state.order==='suggested';}
+function byTime(a){return a.slice().sort((x,y)=>x.m-y.m);}
+function say(msg){state.toast=msg;clearTimeout(toastT);toastT=setTimeout(()=>{state.toast=null;render();},2800);}
+
+function caption(){
+  const a=state.mode==='after';
+  if(state.scene!=='app')return a?'<b>After:</b> the alert says a critical result needs review. It shows no name and no value, so a locked phone reveals nothing. Tap it to open that result.':'<b>Before:</b> the alert only says how many items arrived. It does not say which one matters.';
+  if(state.offline)return a?'<b>After, no signal:</b> the app says when the list was last updated, pauses suggestions, and warns that new critical results may be missing. Reading works. Actions wait for a connection.':'<b>Before, no signal (our assumption, to be checked):</b> the list looks current but may be out of date. Nothing says so, so a new critical result could be missing without the doctor knowing. Actions fail with a generic error.';
+  if(a&&state.killed)return '<b>Switched off:</b> the team turned suggestions off from the Admin view. Doctors see a plain newest-first inbox.';
+  if(a&&state.down)return '<b>Suggestions fail:</b> the inbox falls back to newest first and says so. Nothing is lost.';
+  if(a&&state.order==='time')return '<b>After:</b> the doctor chose newest first. The feature steps aside.';
+  if(a)return '<b>After:</b> the two items that may need attention first are on top, each with a reason. Nothing is hidden, and everything else stays newest first.';
+  return '<b>Before:</b> newest first, as today. The critical potassium result is fourth, under a reschedule request, a refill, and a billing note.';
+}
+
+function card(it){
+  const sug=suggestionsOn()&&it.sug&&!it.over&&!it.snooze;
+  const tags=['<span class="tag">'+LABEL[it.cat]+'</span>'];
+  if(sug)tags.push('<span class="tag sugt">Suggested first · '+it.confWord+' confidence</span>');
+  if(it.over)tags.push('<span class="tag moved">Moved by you</span>');
+  if(it.snooze)tags.push('<span class="tag sz">Back at '+it.snooze+'</span>');
+  if(it.rev)tags.push('<span class="tag rv">You are reviewing</span>');
+  return '<button type="button" class="item'+(sug?' sug':'')+'" data-act="open" data-id="'+it.id+'" data-key="item-'+it.id+'">'+
+   '<span class="av '+it.cat+'" aria-hidden="true">'+it.ab+'</span><span class="im">'+
+   '<span class="r1"><b>'+it.from+'</b><span>'+it.ago+' ago</span></span>'+
+   '<span class="ttl">'+(it.unread&&!it.read?'<span class="dot" role="img" aria-label="Unread"></span>':'')+it.title+'</span>'+
+   '<p class="prev">'+it.prev+'</p><span class="tags">'+tags.join('')+'</span></span></button>';
+}
+
+function listHTML(){
+  const cats=['All','Results','Messages','Refills','Admin'],f=state.filter;
+  const vis=a=>f==='All'?a:a.filter(i=>i.cat===f);
+  const all=byTime(items),snoozed=all.filter(i=>i.snooze),live=all.filter(i=>!i.snooze);
+  const after=state.mode==='after';
+  let body='';
+  if(after&&state.killed)body+='<div class="banner off"><b>Suggestions are turned off by your practice.</b> Showing newest first.</div>';
+  else if(after&&state.offline)body+='<div class="banner off"><b>No signal. Last updated 9:41 am.</b> Suggestions are paused. New critical results may be missing until you reconnect. You can still read items.</div>';
+  else if(after&&state.down)body+='<div class="banner warn"><b>Suggestions are unavailable.</b> Showing newest first. Your inbox is complete.</div>';
+  else if(after&&state.order==='time')body+='<div class="banner info">Showing newest first. <button type="button" data-act="settings" data-key="bn-set">Change order</button></div>';
+  if(suggestionsOn()){
+    const top=vis(live.filter(i=>i.sug&&!i.over)),rest=vis(live.filter(i=>!(i.sug&&!i.over)));
+    body+='<div class="banner info">The order below is a suggestion, not a diagnosis. Everything is still here.</div>';
+    if(top.length)body+='<div class="sec"><span class="pin" aria-hidden="true">1</span>Suggested first ('+top.length+')</div>'+top.map(card).join('');
+    if(rest.length)body+='<div class="sec">Everything else, newest first</div>'+rest.map(card).join('');
+  }else body+=vis(live).map(card).join('');
+  if(vis(snoozed).length)body+='<div class="sec">Snoozed ('+vis(snoozed).length+')</div>'+vis(snoozed).map(card).join('');
+  if(!/class="item/.test(body))body+='<p style="padding:10px;font-size:13px;color:var(--mute)">Nothing in this filter.</p>';
+  const sub=items.length+' open · '+(suggestionsOn()?'suggested order':'newest first')+(after&&state.offline?' · offline, updated 9:41':'');
+  return '<div class="appbar"><div class="approw"><div><h3>Inbox</h3><p>'+sub+'</p></div>'+
+   '<button type="button" class="iconbtn" data-act="settings" data-key="set" aria-label="Inbox settings">'+ICON.set+'</button></div></div>'+
+   '<div class="chips" role="group" aria-label="Filter">'+cats.map(c=>'<button type="button" class="chip" data-act="filter" data-v="'+c+'" data-key="chip-'+c+'" aria-pressed="'+(c===f)+'">'+c+'</button>').join('')+'</div>'+
+   '<div class="scroll">'+body+'</div>'+
+   '<nav class="tabbar" aria-label="App sections"><button class="tab" type="button" data-act="tabinfo" data-v="Schedule" data-key="t1">'+ICON.cal+'Schedule</button><button class="tab" type="button" aria-current="page" data-key="t2">'+ICON.inbox+'Inbox</button><button class="tab" type="button" data-act="tabinfo" data-v="Patients" data-key="t3">'+ICON.pts+'Patients</button></nav>';
+}
+
+function detailHTML(){
+  const it=items.find(i=>i.id===state.cur);
+  const sug=suggestionsOn()&&it.sug&&!it.over&&!it.snooze;
+  const off=state.offline&&state.mode==='after';
+  let content='<div class="msg"><h4>'+it.title+'</h4>';
+  if(it.lab)content+='<p>'+it.lab.name+' result</p><div class="lab"><span>Previous: '+it.lab.prior+'</span><b'+(it.lab.normal?' style="color:var(--ink)"':'')+'>'+it.lab.val+' <small style="font-size:12px;font-weight:600">'+it.lab.unit+'</small></b></div>';
+  else content+='<p>'+it.body+'</p>';
+  content+='</div>';
+  let why='';
+  if(sug){
+    why='<div class="why"><h5>Why this is near the top</h5><ul>'+it.why.map(w=>'<li>'+w+'</li>').join('')+'</ul>'+
+     '<div class="band"><span class="segs" aria-hidden="true">'+[1,2,3].map(n=>'<i class="'+(n<=it.conf?'on':'')+'"></i>').join('')+'</span>'+it.confWord+' confidence</div>'+
+     (it.conf<3?'<p class="confnote">'+it.confNote+'</p>':'<p class="inputs" style="color:var(--ink2)">'+it.confNote+'</p>')+
+     '<p class="inputs">Source: '+it.src+'. Used only: '+it.inputs+'</p>'+fbHTML(it,off)+'</div>';
+  }else if(state.mode==='before'){
+    why='<div class="why" style="border-color:var(--line)"><h5 style="color:var(--mute)">Priority</h5><p style="margin:0;font-size:13.5px;color:var(--ink2)">No priority information. Read each item to decide what is urgent.</p></div>';
+  }
+  let snz='';
+  if(state.mode==='after'){
+    if(it.snooze)snz='<button type="button" class="snz" data-act="unsnooze" data-key="unsz"'+(off?' disabled':'')+'>Snoozed until '+it.snooze+'. Bring it back now</button>';
+    else snz='<button type="button" class="snz" data-act="snooze" data-key="snzb"'+(it.crit||off?' disabled':'')+'>Remind me later</button>'+(it.crit?'<p class="hint">Critical lab results cannot be snoozed.</p>':'');
+  }
+  const offBanner=off?'<div class="banner off"><b>No signal.</b> Reading works. Actions need a connection so they can be recorded.</div>':'';
+  const acts=sug?
+     '<button type="button" class="btn" data-act="notUrgent" data-key="nu"'+(off?' disabled':'')+'>Not urgent</button><button type="button" class="btn pri'+(it.rev?' done':'')+'" data-act="review" data-key="rv"'+(it.rev||off?' disabled':'')+'>'+(it.rev?'Marked for review':'I\'ll review now')+'</button>':
+     '<button type="button" class="btn" data-act="back" data-key="back2">Back to inbox</button>';
+  return '<div style="background:#fff;padding:0 10px"><button type="button" class="back" data-act="back" data-key="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>Inbox</button></div>'+
+   '<div class="pt"><h3>'+it.pt+'</h3><p>'+it.from+' · '+it.ago+' ago</p></div>'+
+   '<div class="dbody">'+offBanner+content+why+snz+
+   '<div class="existing"><button type="button" data-act="existing" data-key="e1">Reply</button><button type="button" data-act="existing" data-key="e2">Close item</button><button type="button" data-act="existing" data-key="e3">Open chart</button></div>'+
+   '<p class="hint">Existing actions. This feature does not change them.</p></div>'+
+   '<div class="actbar">'+acts+'</div>';
+}
+
+function fbHTML(it,off){
+  if(it.fb==='yes')return '<div class="fb">Thanks. Saved for the team that reviews the model. It does not change this suggestion.</div>';
+  if(it.fb==='no'&&it.fbWhy)return '<div class="fb">Thanks. Saved as "'+it.fbWhy+'". A person reviews these. The model is not retrained from one tap.</div>';
+  if(it.fb==='no')return '<div class="fb">What was off?<div class="row2">'+['Reason is wrong','Missing context','Not urgent'].map((w,i)=>'<button type="button" class="fbb" data-act="fbwhy" data-v="'+w+'" data-key="fw'+i+'"'+(off?' disabled':'')+'>'+w+'</button>').join('')+'</div></div>';
+  return '<div class="fb">Were these reasons right?<div class="row2"><button type="button" class="fbb" data-act="fb" data-v="yes" data-key="fby"'+(off?' disabled':'')+'>Yes</button><button type="button" class="fbb" data-act="fb" data-v="no" data-key="fbn"'+(off?' disabled':'')+'>No</button></div></div>';
+}
+
+function overlayHTML(){
+  let h='';
+  if(state.sheet==='override'){
+    const opts=['I already handled this','It can wait until later today','The reasons look wrong'];
+    h='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh1"><h4 id="sh1">Not urgent?</h4>'+
+     '<p>This only changes the order on your screen. Nothing is sent or closed, and the model is not retrained from this tap.</p>'+
+     '<div role="radiogroup" aria-label="Reason (optional)">'+opts.map((o,i)=>'<button type="button" class="opt" role="radio" aria-checked="'+(state.pick===i)+'" data-act="pick" data-i="'+i+'" data-key="opt'+i+'"><span class="rd"></span>'+o+'</button>').join('')+'</div>'+
+     '<div class="row"><button type="button" class="btn" data-act="closeSheet" data-key="cancel">Cancel</button><button type="button" class="btn pri" data-act="confirmOver" data-key="confirm">Move down</button></div></div></div>';
+  }else if(state.sheet==='snooze'){
+    const o=[['In 1 hour','10:41 am'],['This afternoon','2:00 pm'],['Tomorrow morning','8:00 am tomorrow']];
+    h='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh3"><h4 id="sh3">Remind me later</h4>'+
+     '<p>The item stays in your inbox under Snoozed and comes back at the time you choose. Nothing is sent or closed.</p>'+
+     '<div role="radiogroup" aria-label="When">'+o.map((x,i)=>'<button type="button" class="opt" role="radio" aria-checked="'+(state.snzPick===i)+'" data-act="snzpick" data-i="'+i+'" data-key="sp'+i+'"><span class="rd"></span>'+x[0]+' <span style="margin-left:auto;color:var(--mute);font-size:12.5px">'+x[1]+'</span></button>').join('')+'</div>'+
+     '<div class="row"><button type="button" class="btn" data-act="closeSheet" data-key="cancel">Cancel</button><button type="button" class="btn pri" data-act="confirmSnz" data-key="confirm"'+(state.snzPick===null?' disabled':'')+'>Snooze</button></div></div></div>';
+  }else if(state.sheet==='settings'){
+    h='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh2"><h4 id="sh2">Settings</h4>'+
+     (state.mode==='after'?'<h6>Inbox order</h6><div role="radiogroup" aria-label="Inbox order">'+
+     '<button type="button" class="opt" role="radio" aria-checked="'+(state.order==='suggested')+'" data-act="order" data-v="suggested" data-key="o1"><span class="rd"></span>Suggested order</button>'+
+     '<button type="button" class="opt" role="radio" aria-checked="'+(state.order==='time')+'" data-act="order" data-v="time" data-key="o2"><span class="rd"></span>Newest first</button></div><p class="hint">Newest first is always available. Your choice is remembered.</p>':'')+
+     '<h6>Display</h6>'+
+     '<button type="button" class="opt sw" role="switch" aria-checked="'+state.big+'" data-act="big" data-key="big"><span class="rd"></span>Larger text</button>'+
+     '<button type="button" class="opt sw" role="switch" aria-checked="'+state.hc+'" data-act="hc" data-key="hc"><span class="rd"></span>High contrast</button>'+
+     '<div class="row"><button type="button" class="btn pri" data-act="closeSheet" data-key="done">Done</button></div></div></div>';
+  }
+  if(state.toast)h+='<div class="toast" role="status">'+state.toast+'</div>';
+  return h;
+}
+
+function lockHTML(){
+  if(state.scene==='app')return '';
+  if(state.scene==='unlock')return '<div class="lock"><div class="face" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 9v2M15 9v2M12 9v4h-1M9 16c1.6 1.4 4.4 1.4 6 0"/></svg></div><div style="font-size:15px" role="status">Unlocking with Face ID</div></div>';
+  const feat=state.mode==='after';
+  const n=items.length;
+  const nt=feat?'Critical result needs review':n+' new items in your inbox';
+  const nb=feat?'Open the app to see who and what. Details stay hidden on the lock screen.':'Open the app to read them.';
+  return '<div class="lock"><div class="sb"><span>9:41</span><span>5G</span></div><div class="ltime">9:41</div><div class="ldate">Sunday, 25 October</div>'+
+   '<button type="button" class="notif'+(feat?' crit':'')+'" data-act="push" data-key="push"><div class="nh"><span class="ni" aria-hidden="true">C</span><span>Clinic app</span><span>now</span></div><div class="nt">'+nt+'</div><div class="nb">'+nb+'</div></button>'+
+   '<div class="grow"></div><button type="button" class="uk" data-act="unlockPlain" data-key="uk">Swipe up to unlock</button></div>';
+}
+
+function render(){
+  const act=document.activeElement,key=act&&act.dataset?act.dataset.key:null;
+  const sc=view.querySelector('.scroll'),top=sc?sc.scrollTop:0,prev=view.dataset.s;
+  $('#screen').className='screen'+(state.big?' big':'')+(state.hc?' hc':'');
+  view.innerHTML=state.screen==='detail'?detailHTML():listHTML();
+  view.dataset.s=state.screen;
+  const sc2=view.querySelector('.scroll');if(sc2&&prev==='list')sc2.scrollTop=top;
+  overlay.innerHTML=overlayHTML();
+  lockEl.innerHTML=lockHTML();
+  $('#cap').innerHTML=caption();
+  $('#mBefore').setAttribute('aria-pressed',state.mode==='before');
+  $('#mAfter').setAttribute('aria-pressed',state.mode==='after');
+  const d=$('#cDown');d.disabled=state.mode!=='after';d.setAttribute('aria-pressed',state.down);
+  $('#cOff').setAttribute('aria-pressed',state.offline);
+  $('#cLock').setAttribute('aria-pressed',state.scene!=='app');$('#cLock').textContent=state.scene==='app'?'Lock screen alert':'Back to app';
+  if(state.scene==='lock'){const e=lockEl.querySelector('[data-key="push"]');if(e&&(!key||key==='cLock'||!lockEl.querySelector('[data-key="'+key+'"]')))e.focus();}
+  if(state.sheet){const f=overlay.querySelector('.opt,.btn');const e=key?overlay.querySelector('[data-key="'+key+'"]'):null;(e||f)&&(e||f).focus();}
+  else if(key&&state.scene==='app'){const e=document.querySelector('#screen [data-key="'+key+'"]');if(e)e.focus();}
+}
+
+function setMode(m){state.mode=m;state.screen='list';state.sheet=null;if(m==='before'){state.down=false;}render();}
+function closeSheet(){const k={override:'nu',settings:'set',snooze:'snzb'}[state.sheet]||'set';state.sheet=null;render();const e=document.querySelector('[data-key="'+k+'"]');if(e)e.focus();}
+function openItem(id){const it=items.find(i=>i.id===id);it.read=true;state.cur=id;state.screen='detail';
+  if(suggestionsOn()&&it.sug&&!it.over&&!it.snooze)sess.shown++;}
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const a=el.dataset.act;
+  if(a==='scrim'){if(e.target===el)closeSheet();return;}
+  if(a==='open'){openItem(el.dataset.id);render();const sb=view.querySelector('.back');if(sb)sb.focus();return;}
+  if(a==='back'){state.screen='list';render();return;}
+  if(a==='tabinfo'){say(el.dataset.v+' is not part of this prototype. The inbox is the feature.');render();return;}
+  if(a==='filter'){state.filter=el.dataset.v;render();return;}
+  if(a==='settings'){state.sheet='settings';render();return;}
+  if(a==='order'){state.order=el.dataset.v;if(state.order==='time')sess.sw++;render();return;}
+  if(a==='big'){state.big=!state.big;render();return;}
+  if(a==='hc'){state.hc=!state.hc;render();return;}
+  if(a==='closeSheet'){closeSheet();return;}
+  if(a==='notUrgent'){state.sheet='override';state.pick=null;render();return;}
+  if(a==='pick'){state.pick=+el.dataset.i;render();return;}
+  if(a==='confirmOver'){const it=items.find(i=>i.id===state.cur);it.over=true;sess.over++;state.sheet=null;state.screen='list';say('Moved down. Nothing was sent or closed.');render();return;}
+  if(a==='review'){const it=items.find(i=>i.id===state.cur);it.rev=true;sess.rev++;say('Marked for your review. Nothing was sent or closed.');render();return;}
+  if(a==='snooze'){state.sheet='snooze';state.snzPick=null;render();return;}
+  if(a==='snzpick'){state.snzPick=+el.dataset.i;render();return;}
+  if(a==='confirmSnz'){const t=['10:41 am','2:00 pm','8:00 am tomorrow'][state.snzPick];const it=items.find(i=>i.id===state.cur);it.snooze=t;sess.snz++;state.sheet=null;state.screen='list';say('Snoozed until '+t+'. It stays in your inbox.');render();return;}
+  if(a==='unsnooze'){const it=items.find(i=>i.id===state.cur);it.snooze=null;say('Back in your inbox.');render();return;}
+  if(a==='fb'){const it=items.find(i=>i.id===state.cur);it.fb=el.dataset.v;if(it.fb==='yes')sess.fbY++;render();return;}
+  if(a==='fbwhy'){const it=items.find(i=>i.id===state.cur);it.fbWhy=el.dataset.v;sess.fbN++;render();return;}
+  if(a==='existing'){
+    if(state.offline&&state.mode==='before')say('Something went wrong. Please try again.');
+    else if(state.offline)say('No signal. Reconnect to reply or close.');
+    else say('Unchanged. This feature does not touch reply, close, or chart.');
+    render();return;}
+  if(a==='push'){sess.push++;state.scene='unlock';render();unlockT=setTimeout(()=>{state.scene='app';if(state.mode==='after'){state.sheet=null;openItem('k');}else{state.screen='list';}render();const sb=view.querySelector('.back');if(sb)sb.focus();},900);return;}
+  if(a==='unlockPlain'){state.scene='unlock';render();unlockT=setTimeout(()=>{state.scene='app';state.screen='list';render();},700);return;}
+});
+$('#mBefore').onclick=()=>setMode('before');
+$('#mAfter').onclick=()=>setMode('after');
+$('#cDown').onclick=()=>{state.down=!state.down;state.screen='list';state.scene='app';render();};
+$('#cOff').onclick=()=>{state.offline=!state.offline;render();};
+$('#cLock').onclick=()=>{clearTimeout(unlockT);state.sheet=null;state.scene=state.scene==='app'?'lock':'app';render();};
+$('#cReset').onclick=()=>{const m=state.mode,t=state.tab,k=state.killed;init();state.mode=m;state.tab=t;state.killed=k;render();renderMon();};
+document.addEventListener('keydown',e=>{
+  if(state.tab!=='app')return;
+  if(e.key==='1')setMode('before');
+  else if(e.key==='2')setMode('after');
+  else if(e.key==='Escape'){if(state.sheet)closeSheet();else if(state.scene!=='app'){clearTimeout(unlockT);state.scene='app';render();}else if(state.screen==='detail'){state.screen='list';render();}}
+});
+
+function bar(v,max,cls){return '<div class="mb"><div class="track"><div class="fill '+(cls||'a')+'" style="width:'+Math.min(100,v/max*100)+'%"></div></div></div>';}
+function renderMon(){
+  const f=state.fail,base=2.0;
+  const wk=[['Baseline',11,2.0],['Week 1',7.5,2.0],['Week 2',5.8,1.9],['Week 3',4.6,2.1],['Week 4',4.2,f?3.4:1.8]];
+  const last=wk[4],breach=last[2]>base;
+  const gate=breach?'<span class="pill bad">Hold expansion</span>':'<span class="pill ok">Gate passed</span>';
+  const gtxt=breach?'Missed urgent rose from '+base.toFixed(1)+'% to '+last[2].toFixed(1)+'%. Review time improved, but the gate decides. Do not expand until the cause is found.':'Missed urgent is '+last[2].toFixed(1)+'% against a baseline of '+base.toFixed(1)+'%. It did not rise, so expansion can be discussed.';
+  const rows=wk.map(w=>'<tr><td>'+w[0]+'</td><td style="min-width:110px">'+bar(w[1],11,w[0]==='Baseline'?'':'a')+'</td><td>'+w[1]+' min</td><td style="min-width:80px">'+bar(w[2],4,w[0]!=='Baseline'&&w[2]>base?'r':(w[0]==='Baseline'?'':'a'))+'</td><td>'+w[2].toFixed(1)+'%</td></tr>').join('');
+  const killBtn=state.killed?'<button type="button" class="btnm on" data-m="unkill" data-key="mk">Suggestions are off. Turn back on</button>':
+    (state.confirmKill?'<button type="button" class="btnm danger" data-m="kill" data-key="mk">Confirm: turn off for all pilot users</button><button type="button" class="btnm" data-m="cancelkill" data-key="mc">Cancel</button>':'<button type="button" class="btnm danger" data-m="askkill" data-key="mk">Turn off suggestions</button>');
+  $('#monView').innerHTML=
+   '<div class="mon">'+
+   '<div class="card full intro"><h2>Admin view</h2><p>This is what the product and patient safety team would watch after launch. It answers one question: are urgent items being seen sooner without more being missed? If not, they can switch the feature off.</p></div>'+
+   '<div class="card full"><h2>Release gate, week 4</h2><div class="gatebox"><span class="big">'+last[2].toFixed(1)+'%</span><span>missed urgent, against '+base.toFixed(1)+'% at baseline</span>'+gate+'</div><p style="margin-top:8px">'+gtxt+'</p><p class="small">All figures are synthetic, to show what the team would watch. No real baseline exists yet.</p>'+
+   '<div class="row-a"><button type="button" class="btnm" data-m="fail" data-key="mf">'+(f?'Show a passing week':'Show a failing week')+'</button></div></div>'+
+   '<div class="card"><h2>Review time and missed urgent</h2><table class="t"><thead><tr><th>Period</th><th></th><th>Minutes</th><th></th><th>Missed</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   '<div class="card"><h2>By item type, week 4</h2><table class="t"><thead><tr><th>Type</th><th>Time</th><th>Missed</th></tr></thead><tbody>'+
+   '<tr><td>Critical labs (rule)</td><td>9.0 to 3.1 min</td><td>0.5%</td></tr>'+
+   '<tr><td>Symptom messages (model)</td><td>14.0 to '+(f?'6.1':'3.6')+' min</td><td>'+(f?'6.1%':'3.6%')+'</td></tr></tbody></table>'+
+   '<p style="margin-top:8px">'+(f?'The model-ranked messages cause the breach. The lab rule is fine. Narrow the message ranking and keep the rule.':'Messages carry the most model risk, even when the gate passes.')+'</p></div>'+
+   '<div class="card"><h2>How providers use it</h2><table class="t"><tbody>'+
+   '<tr><td>Opened a suggested item first</td><td><b>71%</b></td></tr>'+
+   '<tr><td>Opened the reason</td><td><b>48%</b></td></tr>'+
+   '<tr><td>Overrode with "Not urgent"</td><td><b>9%</b></td></tr>'+
+   '<tr><td>Switched to newest first</td><td><b>6%</b></td></tr>'+
+   '<tr><td>Marked reasons right</td><td><b>82%</b></td></tr></tbody></table></div>'+
+   '<div class="card"><h2>Fairness and data checks</h2><table class="t"><thead><tr><th>Cut</th><th>Missed</th><th>Status</th></tr></thead><tbody>'+
+   '<tr><td>After hours</td><td>'+(f?'5.2%':'4.1%')+'</td><td><span class="pill watch">Watch</span></td></tr>'+
+   '<tr><td>Small practices</td><td>2.3%</td><td><span class="pill watch">Watch</span></td></tr>'+
+   '<tr><td>Missing read status</td><td>1.2%</td><td><span class="pill ok">Ok</span></td></tr></tbody></table></div>'+
+   '<div class="card full" style="border-left:4px solid var(--crit)"><h2 style="color:var(--crit)">Off switch</h2><p>The product manager or patient safety lead can turn suggestions off for every pilot user without an app release. Providers then see a plain newest-first inbox. Critical lab alerts keep working, because they follow a fixed rule and do not use the model.</p><div class="row-a">'+killBtn+'</div></div>'+
+   '</div>';
+}
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-m]');if(!el)return;
+  const m=el.dataset.m;
+  if(m==='fail'){state.fail=!state.fail;}
+  else if(m==='askkill'){state.confirmKill=true;}
+  else if(m==='cancelkill'){state.confirmKill=false;}
+  else if(m==='kill'){state.killed=true;state.confirmKill=false;state.screen='list';}
+  else if(m==='unkill'){state.killed=false;}
+  const k=el.dataset.key;renderMon();render();const n=document.querySelector('#monView [data-key="'+k+'"]');if(n)n.focus();
+});
+function setTab(t){state.tab=t;
+  $('#tApp').setAttribute('aria-selected',t==='app');$('#tMon').setAttribute('aria-selected',t==='mon');
+  $('#appView').classList.toggle('hidden',t!=='app');$('#monView').classList.toggle('hidden',t!=='mon');
+  if(t==='mon')renderMon();}
+$('#tApp').onclick=()=>setTab('app');$('#tMon').onclick=()=>setTab('mon');
+render();renderMon();
+</script>
+</body>
+</html>
